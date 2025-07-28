@@ -16,9 +16,18 @@ class Player {
     }
 
     update() {
-
+        this.y += this.velocity;
     }
 }
 
 const player = new Player(10, 10, 10, 10, 10);
-player.render();
+
+const animate = () => {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    window.requestAnimationFrame(animate);
+    player.render();
+    player.update();
+    
+}
+
+animate();
