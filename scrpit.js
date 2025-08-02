@@ -1,6 +1,10 @@
 const canvas = document.querySelector('canvas');
 const ctx = canvas.getContext('2d');
 
+// player image
+const playerImage = new Image();
+playerImage.src = 'resources/player.png';
+
 // Set canvas size
 canvas.width = window.innerWidth;
 canvas.height = window.innerHeight;
@@ -39,12 +43,23 @@ class Player {
         this.speed = 5;
         this.jumpStrength = 12;
         this.onGround = false;
+        this.facing = 'right'; // Default facing direction
     }
 
     render() {
-        ctx.fillStyle = '#ff00ff';
-        ctx.fillRect(this.x, this.y, this.width, this.height);
+    const image = playerImage;
+
+    ctx.save(); // Save the current state
+
+    if (this.facing === 'left') {
+        ctx.scale(-1, 1); // Flip horizontally
+        ctx.drawImage(image, -this.x - this.width, this.y, this.width, this.height);
+    } else {
+        ctx.drawImage(image, this.x, this.y, this.width, this.height);
     }
+
+    ctx.restore(); // Restore to original state
+}
 
     update(platforms) {
     // Apply gravity
@@ -125,17 +140,19 @@ function animate() {
     requestAnimationFrame(animate);
 }
 
-animate();
+playerImage.onload = () => { animate(); }
 
 window.addEventListener('keydown', (e) => {
     switch (e.code) {
         case 'ArrowRight':
         case 'KeyD':
             player.velocityX = player.speed;
+            player.facing = 'right'; // Update facing direction
             break;
         case 'ArrowLeft':
         case 'KeyA':
             player.velocityX = -player.speed;
+            player.facing = 'left'; // Update facing direction
             break;
         case 'ArrowUp':
         case 'KeyW':
