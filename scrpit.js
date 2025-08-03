@@ -34,31 +34,55 @@ class Platform {
 
 class Player {
     constructor(x, y, width, height) {
-        this.x = x;
-        this.y = y;
-        this.width = width;
-        this.height = height;
+        this.x = 50; // Starting x position
+        this.y = GROUND_Y - height; // Starting y position, adjusted to be on the ground
+        // Adjusted width and height for better proportions
+        this.width = width; 
+        this.height = height; 
         this.velocityX = 0;
         this.velocityY = 0;
         this.speed = 5;
         this.jumpStrength = 12;
         this.onGround = false;
+        this.imageRight = playerImage; // Image for right facing
+        this.imageLeft = playerImage; // Image for left facing (same image for now)
         this.facing = 'right'; // Default facing direction
     }
 
     render() {
-    const image = playerImage;
+    const image = this.facing === 'left' ? this.imageLeft : this.imageRight;
+    const scale = 2.5; // Scale factor for the image
 
-    ctx.save(); // Save the current state
+    const drawWidth = this.width * scale;
+    const drawHeight = this.height * scale;
+
+    // Adjust so the bottom of the image aligns with bottom of player box
+    const drawX = this.x - (drawWidth - this.width) / 2;
+    const drawY = this.y + this.height - drawHeight;
+
+    ctx.save();
 
     if (this.facing === 'left') {
-        ctx.scale(-1, 1); // Flip horizontally
-        ctx.drawImage(image, -this.x - this.width, this.y, this.width, this.height);
+        // Flip horizontally around the image center
+        ctx.scale(-1, 1);
+        ctx.drawImage(
+            image,
+            -drawX - drawWidth,
+            drawY,
+            drawWidth,
+            drawHeight
+        );
     } else {
-        ctx.drawImage(image, this.x, this.y, this.width, this.height);
+        ctx.drawImage(
+            image,
+            drawX,
+            drawY,
+            drawWidth,
+            drawHeight
+        );
     }
 
-    ctx.restore(); // Restore to original state
+    ctx.restore();
 }
 
     update(platforms) {
