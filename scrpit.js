@@ -1,6 +1,10 @@
 const canvas = document.querySelector('canvas');
 const ctx = canvas.getContext('2d');
 
+// Scenery sprites
+const sceneryImage = new Image();
+sceneryImage.src = 'resources/platform_sprites.png';
+
 // player image
 const playerImage = new Image();
 playerImage.src = 'resources/player.png';
@@ -13,6 +17,7 @@ canvas.height = window.innerHeight;
 const GRAVITY = 0.5;
 const GROUND_HEIGHT = canvas.height / 5;
 const GROUND_Y = canvas.height - GROUND_HEIGHT;
+
 
 class Platform {
     constructor(x, y, width, height) {
@@ -137,21 +142,65 @@ const platforms = [
     new Platform(600, 200, 100, 20),
 ];
 
-function drawBackground() {
-    ctx.fillStyle = '#87CEEB'; // Sky blue
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+function drawSprite(sourceX, sourceY, sourceWidth, sourceHeight, destX, destY, scale = 1) {
+    const destWidth = sourceWidth * scale;
+    const destHeight = sourceHeight * scale;
+    ctx.drawImage(
+        sceneryImage,
+        sourceX, sourceY, sourceWidth, sourceHeight,
+        destX, destY, destWidth, destHeight
+    );
 }
 
-function drawGround() {
-    ctx.fillStyle = '#654321'; // brown
-    ctx.fillRect(0, GROUND_Y, canvas.width, GROUND_HEIGHT);
+function drawBackground() {
+    // Sky
+    ctx.fillStyle = '#87CEEB';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // Sand hills (draw once or repeat for parallax effect)
+    const hillY = GROUND_Y - 200; // Adjust height based on desired look
+    drawSprite(175, 280, 335, 90, 0, hillY, 2.5);  // Position at x=100, scale up if needed
+}
+
+function drawGround(ctx, spriteSheet, canvasWidth, baseY) {
+    const adjustedY = baseY; // baseY already includes any offset like +60
+    const fillStartY = adjustedY; // Start fill directly under ground tiles
+
+    // Fill beneath the ground with gradient
+    const gradient = ctx.createLinearGradient(0, fillStartY, 0, canvas.height);
+    gradient.addColorStop(0, '#966042ff');   // Light brown at the top
+    gradient.addColorStop(1, '#4d422ff8');   // Coal black at the bottom
+
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, fillStartY, canvasWidth, canvas.height - fillStartY);
+
+    // Then draw the ground tiles
+    const sourceX = 90;
+    const sourceY = 390;
+    const sourceWidth = 460;
+    const sourceHeight = 75;
+
+    const trimBottom = 22; // Crop 25px of transparent space from bottom
+    const visibleSourceHeight = sourceHeight - trimBottom;
+
+    const scale = 1;
+    const destWidth = sourceWidth * scale;
+    const destHeight = visibleSourceHeight * scale;
+
+    for (let x = 0; x < canvasWidth; x += destWidth - 30) {
+        ctx.drawImage(
+            spriteSheet,
+            sourceX, sourceY, sourceWidth, visibleSourceHeight,
+            x, adjustedY - destHeight, destWidth, destHeight
+        );
+    }
 }
 
 function animate() {
     
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     drawBackground(); 
-    drawGround();
+    drawGround(ctx, sceneryImage, canvas.width, GROUND_Y + 35); // Draw ground with padding
 
     // Draw all platforms
     for (let platform of platforms) {
@@ -164,7 +213,16 @@ function animate() {
     requestAnimationFrame(animate);
 }
 
-playerImage.onload = () => { animate(); }
+let assetsLoaded = 0;
+function tryStartGame() {
+    assetsLoaded++;
+    if (assetsLoaded === 2) {
+        animate();
+    }
+}
+
+playerImage.onload = tryStartGame;
+sceneryImage.onload = tryStartGame;
 
 window.addEventListener('keydown', (e) => {
     switch (e.code) {
