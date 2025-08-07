@@ -96,7 +96,7 @@ class Player extends Entity {
     }
 }
 
-const player = new Player(100, 100, 30, 30);
+const player = new Player(100, GROUND_Y, 30, 30);
 const platforms = [
     new Platform(200, 400, 100, 20),
     new Platform(400, 300, 150, 20),
