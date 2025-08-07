@@ -1,256 +1,165 @@
+// === PLATFORMER GAME (Refactored for Clarity & Conciseness) ===
+
 const canvas = document.querySelector('canvas');
 const ctx = canvas.getContext('2d');
-
-// Scenery sprites
-const sceneryImage = new Image();
-sceneryImage.src = 'resources/platform_sprites.png';
-
-// player image
-const playerImage = new Image();
-playerImage.src = 'resources/player.png';
-
-// Set canvas size
 canvas.width = window.innerWidth;
 canvas.height = window.innerHeight;
 
-// Constants
 const GRAVITY = 0.5;
-const GROUND_HEIGHT = canvas.height / 5;
-const GROUND_Y = canvas.height - GROUND_HEIGHT;
+const GROUND_Y = canvas.height - canvas.height / 5;
 
+// Load Images
+const images = {
+    background: loadImage('resources/background_sprite.png'),
+    ground: loadImage('resources/floor_tile_sprite.png'),
+    player: loadImage('resources/player.png')
+};
 
-class Platform {
-    constructor(x, y, width, height) {
-        this.x = x;
-        this.y = y;
-        this.width = width;
-        this.height = height;
+function loadImage(src) {
+    const img = new Image();
+    img.src = src;
+    return img;
+}
+
+class Entity {
+    constructor(x, y, w, h) {
+        Object.assign(this, { x, y, w, h });
     }
 
+    intersects(e) {
+        return this.x < e.x + e.w && this.x + this.w > e.x && this.y < e.y + e.h && this.y + this.h > e.y;
+    }
+}
+
+class Platform extends Entity {
     render() {
-    ctx.fillStyle = '#228B22';
-    ctx.fillRect(this.x, this.y, this.width, this.height);
-
-    // Optional border
-    ctx.strokeStyle = '#000';
-    ctx.strokeRect(this.x, this.y, this.width, this.height);
-}
+        ctx.fillStyle = '#228B22';
+        ctx.fillRect(this.x, this.y, this.w, this.h);
+        ctx.strokeStyle = '#000';
+        ctx.strokeRect(this.x, this.y, this.w, this.h);
+    }
 }
 
-class Player {
-    constructor(x, y, width, height) {
-        this.x = 50; // Starting x position
-        this.y = GROUND_Y - height; // Starting y position, adjusted to be on the ground
-        // Adjusted width and height for better proportions
-        this.width = width; 
-        this.height = height; 
-        this.velocityX = 0;
-        this.velocityY = 0;
+class Player extends Entity {
+    constructor(x, y, w, h) {
+        super(x, y, w, h);
+        this.vx = 0;
+        this.vy = 0;
         this.speed = 5;
-        this.jumpStrength = 12;
+        this.jump = 12;
+        this.facing = 'right';
         this.onGround = false;
-        this.imageRight = playerImage; // Image for right facing
-        this.imageLeft = playerImage; // Image for left facing (same image for now)
-        this.facing = 'right'; // Default facing direction
     }
-
-    render() {
-    const image = this.facing === 'left' ? this.imageLeft : this.imageRight;
-    const scale = 2.5; // Scale factor for the image
-
-    const drawWidth = this.width * scale;
-    const drawHeight = this.height * scale;
-
-    // Adjust so the bottom of the image aligns with bottom of player box
-    const drawX = this.x - (drawWidth - this.width) / 2;
-    const drawY = this.y + this.height - drawHeight;
-
-    ctx.save();
-
-    if (this.facing === 'left') {
-        // Flip horizontally around the image center
-        ctx.scale(-1, 1);
-        ctx.drawImage(
-            image,
-            -drawX - drawWidth,
-            drawY,
-            drawWidth,
-            drawHeight
-        );
-    } else {
-        ctx.drawImage(
-            image,
-            drawX,
-            drawY,
-            drawWidth,
-            drawHeight
-        );
-    }
-
-    ctx.restore();
-}
 
     update(platforms) {
-    // Apply gravity
-    this.velocityY += GRAVITY;
+        this.vy += GRAVITY;
+        this.x += this.vx;
+        this.y += this.vy;
 
-    // Move horizontally
-    this.x += this.velocityX;
+        // Bounds
+        this.x = Math.max(0, Math.min(canvas.width - this.w, this.x));
+        this.onGround = false;
 
-    // Horizontal screen boundaries
-    if (this.x < 0) this.x = 0;
-    if (this.x + this.width > canvas.width) this.x = canvas.width - this.width;
-
-    // Move vertically
-    this.y += this.velocityY;
-
-    // Assume player is falling
-    this.onGround = false;
-
-    // Check collision with ground
-    if (this.y + this.height >= GROUND_Y) {
-        this.y = GROUND_Y - this.height;
-        this.velocityY = 0;
-        this.onGround = true;
-    }
-
-    // Check collision with each platform (top surface only)
-    for (let platform of platforms) {
-        const playerBottom = this.y + this.height;
-        const playerPrevBottom = this.y + this.height - this.velocityY;
-        const platformTop = platform.y;
-
-        const isFalling = this.velocityY >= 0;
-        const isWithinX = this.x + this.width > platform.x && this.x < platform.x + platform.width;
-        const justLanded = playerPrevBottom <= platformTop && playerBottom >= platformTop;
-
-        if (isFalling && isWithinX && justLanded) {
-            // Snap to platform surface
-            this.y = platform.y - this.height;
-            this.velocityY = 0;
+        // Ground collision
+        if (this.y + this.h >= GROUND_Y) {
+            this.y = GROUND_Y - this.h;
+            this.vy = 0;
             this.onGround = true;
         }
+
+        // Platform collisions
+        for (let p of platforms) {
+            const prevBottom = this.y + this.h - this.vy;
+            const landed = this.vy >= 0 &&
+                this.x + this.w > p.x && this.x < p.x + p.w &&
+                prevBottom <= p.y && this.y + this.h >= p.y;
+            if (landed) {
+                this.y = p.y - this.h;
+                this.vy = 0;
+                this.onGround = true;
+            }
+        }
     }
-}
+
+    render() {
+        const scale = 2.5, dw = this.w * scale, dh = this.h * scale;
+        const dx = this.x - (dw - this.w) / 2;
+        const dy = this.y + this.h - dh;
+        ctx.save();
+        if (this.facing === 'left') {
+            ctx.scale(-1, 1);
+            ctx.drawImage(images.player, -dx - dw, dy, dw, dh);
+        } else {
+            ctx.drawImage(images.player, dx, dy, dw, dh);
+        }
+        ctx.restore();
+    }
 }
 
 const player = new Player(100, 100, 30, 30);
-
 const platforms = [
     new Platform(200, 400, 100, 20),
     new Platform(400, 300, 150, 20),
     new Platform(600, 200, 100, 20),
 ];
 
-function drawSprite(sourceX, sourceY, sourceWidth, sourceHeight, destX, destY, scale = 1) {
-    const destWidth = sourceWidth * scale;
-    const destHeight = sourceHeight * scale;
-    ctx.drawImage(
-        sceneryImage,
-        sourceX, sourceY, sourceWidth, sourceHeight,
-        destX, destY, destWidth, destHeight
-    );
+function drawSprite(img, sx, sy, sw, sh, dx, dy, scale = 1) {
+    ctx.drawImage(img, sx, sy, sw, sh, dx, dy, sw * scale, sh * scale);
 }
 
 function drawBackground() {
-    // Sky
     ctx.fillStyle = '#87CEEB';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-    // Sand hills (draw once or repeat for parallax effect)
-    const hillY = GROUND_Y - 200; // Adjust height based on desired look
-    drawSprite(175, 280, 335, 90, 0, hillY, 2.5);  // Position at x=100, scale up if needed
+    const hillY = GROUND_Y - 200;
+    const sx = 135, sy = 271, sw = 356, sh = 93;
+    const dh = sh * (canvas.width / sw);
+    ctx.drawImage(images.background, sx, sy, sw, sh, 0, hillY, canvas.width, dh);
 }
 
-function drawGround(ctx, spriteSheet, canvasWidth, baseY) {
-    const adjustedY = baseY; // baseY already includes any offset like +60
-    const fillStartY = adjustedY; // Start fill directly under ground tiles
 
-    // Fill beneath the ground with gradient
-    const gradient = ctx.createLinearGradient(0, fillStartY, 0, canvas.height);
-    gradient.addColorStop(0, '#966042ff');   // Light brown at the top
-    gradient.addColorStop(1, '#4d422ff8');   // Coal black at the bottom
+function drawGround() {
+    const sx = 87, sy = 378, sw = 433, sh = 66;
+    const destH = sh, scale = 1, destY = GROUND_Y + 45 - destH;
 
-    ctx.fillStyle = gradient;
-    ctx.fillRect(0, fillStartY, canvasWidth, canvas.height - fillStartY);
+    // Under fill
+    const g = ctx.createLinearGradient(0, GROUND_Y + 35, 0, canvas.height);
+    g.addColorStop(0, '#966042');
+    g.addColorStop(1, '#4d422f');
+    ctx.fillStyle = g;
+    ctx.fillRect(0, GROUND_Y + 35, canvas.width, canvas.height - GROUND_Y - 35);
 
-    // Then draw the ground tiles
-    const sourceX = 90;
-    const sourceY = 390;
-    const sourceWidth = 460;
-    const sourceHeight = 75;
-
-    const trimBottom = 22; // Crop 25px of transparent space from bottom
-    const visibleSourceHeight = sourceHeight - trimBottom;
-
-    const scale = 1;
-    const destWidth = sourceWidth * scale;
-    const destHeight = visibleSourceHeight * scale;
-
-    for (let x = 0; x < canvasWidth; x += destWidth - 30) {
-        ctx.drawImage(
-            spriteSheet,
-            sourceX, sourceY, sourceWidth, visibleSourceHeight,
-            x, adjustedY - destHeight, destWidth, destHeight
-        );
+    for (let x = 0; x < canvas.width; x += sw - 30) {
+        ctx.drawImage(images.ground, sx, sy, sw, sh, x, destY, sw * scale, sh * scale);
     }
 }
 
 function animate() {
-    
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    drawBackground(); 
-    drawGround(ctx, sceneryImage, canvas.width, GROUND_Y + 35); // Draw ground with padding
-
-    // Draw all platforms
-    for (let platform of platforms) {
-        platform.render();
-    }
-
+    drawBackground();
+    drawGround();
+    platforms.forEach(p => p.render());
     player.update(platforms);
     player.render();
-
     requestAnimationFrame(animate);
 }
 
-let assetsLoaded = 0;
-function tryStartGame() {
-    assetsLoaded++;
-    if (assetsLoaded === 2) {
-        animate();
+let loaded = 0;
+Object.values(images).forEach(img => img.onload = () => (++loaded === 3 && animate()));
+
+window.addEventListener('keydown', e => {
+    if (['ArrowRight', 'KeyD'].includes(e.code)) {
+        player.vx = player.speed;
+        player.facing = 'right';
     }
-}
-
-playerImage.onload = tryStartGame;
-sceneryImage.onload = tryStartGame;
-
-window.addEventListener('keydown', (e) => {
-    switch (e.code) {
-        case 'ArrowRight':
-        case 'KeyD':
-            player.velocityX = player.speed;
-            player.facing = 'right'; // Update facing direction
-            break;
-        case 'ArrowLeft':
-        case 'KeyA':
-            player.velocityX = -player.speed;
-            player.facing = 'left'; // Update facing direction
-            break;
-        case 'ArrowUp':
-        case 'KeyW':
-        case 'Space':
-            if (player.onGround) {
-                player.velocityY = -player.jumpStrength;
-            }
-            break;
+    if (['ArrowLeft', 'KeyA'].includes(e.code)) {
+        player.vx = -player.speed;
+        player.facing = 'left';
+    }
+    if (['ArrowUp', 'KeyW', 'Space'].includes(e.code) && player.onGround) {
+        player.vy = -player.jump;
     }
 });
 
-window.addEventListener('keyup', (e) => {
-    if (
-        e.code === 'ArrowRight' || e.code === 'KeyD' ||
-        e.code === 'ArrowLeft'  || e.code === 'KeyA'
-    ) {
-        player.velocityX = 0;
-    }
+window.addEventListener('keyup', e => {
+    if (['ArrowRight', 'KeyD', 'ArrowLeft', 'KeyA'].includes(e.code)) player.vx = 0;
 });
