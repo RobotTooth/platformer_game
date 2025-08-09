@@ -156,7 +156,16 @@ function drawBackground() {
     sw = 356,
     sh = 93;
   const dh = sh * (canvas.width / sw);
-  ctx.drawImage(images.background, sx, sy, sw, sh, 0, hillY, LEVEL_WIDTH, dh);
+
+  // Parallax: move background slower than camera
+  const parallaxFactor = 0.4; // Lower = slower background
+  const bgOffset = cameraX * parallaxFactor;
+
+  ctx.drawImage(
+    images.background,
+    sx, sy, sw, sh,
+    -bgOffset, hillY, LEVEL_WIDTH + 1000, dh
+  );
 }
 
 function drawGround() {
