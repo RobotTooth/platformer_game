@@ -16,6 +16,7 @@ const images = {
   background: loadImage("resources/background_sprite.png"),
   ground: loadImage("resources/floor_tile_sprite.png"),
   player: loadImage("resources/player.png"),
+  end_of_level: loadImage("resources/egypt-exz.png"),
 };
 
 function loadImage(src) {
@@ -149,7 +150,7 @@ function drawSprite(img, sx, sy, sw, sh, dx, dy, scale = 1) {
 
 function drawBackground() {
   ctx.fillStyle = "#87CEEB";
-  ctx.fillRect(0, 0, LEVEL_WIDTH, canvas.height);
+  ctx.fillRect(0, 0, LEVEL_WIDTH + 500, canvas.height);
   const hillY = GROUND_Y - 200;
   const sx = 135,
     sy = 271,
@@ -182,9 +183,9 @@ function drawGround() {
   g.addColorStop(0, "#966042");
   g.addColorStop(1, "#4d422f");
   ctx.fillStyle = g;
-  ctx.fillRect(0, GROUND_Y + 35, LEVEL_WIDTH, canvas.height - GROUND_Y - 35);
+  ctx.fillRect(0, GROUND_Y + 35, LEVEL_WIDTH + 500, canvas.height - GROUND_Y - 35);
 
-  for (let x = 0; x < LEVEL_WIDTH; x += sw - 30) {
+  for (let x = 0; x < LEVEL_WIDTH + 500; x += sw - 30) {
   ctx.drawImage(
     images.ground,
     sx,
@@ -200,11 +201,29 @@ function drawGround() {
   }
 }
 
+function drawEndOfLevel() {
+  const sx = 0,
+    sy = 0,
+    sw = 1247,
+    sh = 640;
+  const scale = 1;
+  const dx = LEVEL_WIDTH - (sw * 0.5)   * scale - 20; // 20px padding
+  const dy = GROUND_Y - sh * scale - 20; // 20px padding
+  
+  ctx.drawImage(
+    images.end_of_level,
+    sx, sy, sw, sh,
+    dx, dy,
+    sw * scale, sh * scale
+  );
+}
+
 function animate() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   updateCamera(); // <-- Apply camera transform globally
   drawBackground();
   drawGround();
+  drawEndOfLevel();
   platforms.forEach((p) => p.render());
   player.update(platforms);
   player.render();
@@ -212,8 +231,9 @@ function animate() {
 }
 
 let loaded = 0;
+const totalImages = Object.keys(images).length;
 Object.values(images).forEach(
-  (img) => (img.onload = () => ++loaded === 3 && animate())
+  (img) => (img.onload = () => ++loaded === totalImages && animate())
 );
 
 window.addEventListener("keydown", (e) => {
