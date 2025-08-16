@@ -17,6 +17,7 @@ const images = {
   ground: loadImage("resources/floor_tile_sprite.png"),
   player: loadImage("resources/player.png"),
   end_of_level: loadImage("resources/egypt-exz.png"),
+  platform_1: loadImage("resources/platform_1.png"),
 };
 
 function loadImage(src) {
@@ -49,10 +50,20 @@ class Entity {
 
 class Platform extends Entity {
   render() {
-    ctx.fillStyle = "#228B22";
-    ctx.fillRect(this.x, this.y, this.w, this.h);
-    ctx.strokeStyle = "#000";
-    ctx.strokeRect(this.x, this.y, this.w, this.h);
+    if (this.w === 100 && this.h === 20 && images.platform_1.complete) {
+      ctx.drawImage(
+        images.platform_1,
+        this.x,
+        this.y,
+        this.w,
+        this.h
+      );
+    } else {
+      ctx.fillStyle = "#228B22";
+      ctx.fillRect(this.x, this.y, this.w, this.h);
+      ctx.strokeStyle = "#000";
+      ctx.strokeRect(this.x, this.y, this.w, this.h);
+    }
   }
 }
 
