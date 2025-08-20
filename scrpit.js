@@ -15,9 +15,10 @@ const GROUND_Y = canvas.height - canvas.height / 5;
 const images = {
   background: loadImage("resources/background_sprite.png"),
   ground: loadImage("resources/floor_tile_sprite.png"),
-  player: loadImage("resources/player.png"),
+  player: loadImage("resources/walk.png"),
   end_of_level: loadImage("resources/egypt-exz.png"),
   platform_1: loadImage("resources/platform_1.png"),
+  block: loadImage("resources/shining_red_block.png"),
 };
 
 function loadImage(src) {
@@ -76,6 +77,15 @@ class Player extends Entity {
     this.jump = 12;
     this.facing = "right";
     this.onGround = false;
+
+    // --- Animation setup ---
+    this.sprite = images.player; //  5-frame walk cycle sheet
+    this.frameWidth = 359;   // adjust to your sheet frame size
+    this.frameHeight = 649;
+    this.currentFrame = 0;
+    this.totalFrames = 5; // 4 frames in the walk cycle
+    this.tickCount = 0;
+    this.ticksPerFrame = 6; // lower = faster animation
   }
 
   update(platforms) {
@@ -109,6 +119,17 @@ class Player extends Entity {
         this.onGround = true;
       }
     }
+
+    // --- Animation update ---
+    if (this.vx !== 0) { // only animate when walking
+      this.tickCount++;
+      if (this.tickCount > this.ticksPerFrame) {
+        this.tickCount = 0;
+        this.currentFrame = (this.currentFrame + 1) % this.totalFrames;
+      }
+    } else {
+      this.currentFrame = 0; // idle frame
+    }
   }
 
   render() {
@@ -116,16 +137,25 @@ class Player extends Entity {
       dw = this.w * scale,
       dh = this.h * scale;
 
-    // No manual cameraX offset needed now
     const dx = this.x - (dw - this.w) / 2;
-    const dy = this.y + this.h - dh;
+    const dy = this.y + this.h - dh + 5;
 
     ctx.save();
     if (this.facing === "left") {
       ctx.scale(-1, 1);
-      ctx.drawImage(images.player, -dx - dw, dy, dw, dh);
+      ctx.drawImage(
+        this.sprite,
+        this.currentFrame * this.frameWidth, 0, // source X,Y
+        this.frameWidth, this.frameHeight,      // source W,H
+        -dx - dw, dy, dw, dh                    // dest
+      );
     } else {
-      ctx.drawImage(images.player, dx, dy, dw, dh);
+      ctx.drawImage(
+        this.sprite,
+        this.currentFrame * this.frameWidth, 0, // source X,Y
+        this.frameWidth, this.frameHeight,      // source W,H
+        dx, dy, dw, dh                          // dest
+      );
     }
     ctx.restore();
   }
@@ -187,10 +217,10 @@ function drawGround() {
     sh = 66;
   const destH = sh,
     scale = 1,
-    destY = GROUND_Y + 45 - destH;
+    destY = GROUND_Y + 50 - destH;
 
   // Under fill
-  const g = ctx.createLinearGradient(0, GROUND_Y + 35, 0, canvas.height);
+  const g = ctx.createLinearGradient(0, GROUND_Y +35, 0, canvas.height);
   g.addColorStop(0, "#966042");
   g.addColorStop(1, "#4d422f");
   ctx.fillStyle = g;
@@ -219,7 +249,7 @@ function drawEndOfLevel() {
     sh = 640;
   const scale = 1;
   const dx = LEVEL_WIDTH - (sw * 0.5)   * scale - 20; // 20px padding
-  const dy = GROUND_Y - sh * scale - 20; // 20px padding
+  const dy = GROUND_Y - sh * scale - 15; // 20px padding
   
   ctx.drawImage(
     images.end_of_level,
