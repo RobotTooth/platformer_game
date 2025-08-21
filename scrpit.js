@@ -68,6 +68,40 @@ class Platform extends Entity {
   }
 }
 
+class BlockPlatform extends Entity {
+  constructor(x, y) {
+    super(x, y, 32, 32);
+    this.sprite = images.block;
+    this.frameWidth = 32;
+    this.frameHeight = 32;
+    this.totalFrames = 5;
+    this.currentFrame = 0;
+    this.tickCount = 0;
+    this.ticksPerFrame = 6;
+    this.destroyed = false;
+  }
+
+  update() {
+    // Animate block
+    this.tickCount++;
+    if (this.tickCount > this.ticksPerFrame) {
+      this.tickCount = 0;
+      this.currentFrame = (this.currentFrame + 1) % this.totalFrames;
+    }
+  }
+
+  render() {
+    if (!this.destroyed && this.sprite.complete) {
+      ctx.drawImage(
+        this.sprite,
+        this.currentFrame * this.frameWidth, 0, // source X,Y
+        this.frameWidth, this.frameHeight,      // source W,H
+        this.x, this.y, this.frameWidth, this.frameHeight
+      );
+    }
+  }
+}
+
 class Player extends Entity {
   constructor(x, y, w, h) {
     super(x, y, w, h);
@@ -106,7 +140,8 @@ class Player extends Entity {
 
     // Platform collisions
     for (let p of platforms) {
-      const prevBottom = this.y + this.h - this.vy;
+      if (p instanceof BlockPlatform && p.destroyed) continue; // Skip destroyed blocks
+        const prevBottom = this.y + this.h - this.vy;
       const landed =
         this.vy >= 0 &&
         this.x + this.w > p.x &&
@@ -118,7 +153,31 @@ class Player extends Entity {
         this.vy = 0;
         this.onGround = true;
       }
-    }
+      // Block break check (from underneath)
+  if (
+    p instanceof BlockPlatform &&
+    !p.destroyed &&
+    this.vy < 0 && // moving up
+    this.x + this.w > p.x &&
+    this.x < p.x + p.w &&
+    this.y <= p.y + p.h &&
+    this.y + this.h > p.y + p.h
+  ) {
+    p.destroyed = true;
+    this.vy = 0; // stop upward movement
+  }
+}
+    // Prevent going through platforms
+    if (this.vy < 0) {
+      for (let p of platforms) {
+        if (this.intersects(p) && this.y + this.h <= p.y) {
+          this.y = p.y - this.h;
+          this.vy = 0;
+          this.onGround = true;
+          break;
+        }
+      }
+    } 
 
     // --- Animation update ---
     if (this.vx !== 0) { // only animate when walking
@@ -165,7 +224,13 @@ const player = new Player(100, GROUND_Y, 30, 30);
 const platforms = [
   new Platform(200, GROUND_Y - 100, 100, 20),
   new Platform(400, GROUND_Y - 200, 150, 20),
-  new Platform(600, GROUND_Y - 300, 100, 20),
+  new BlockPlatform(600, GROUND_Y - 300),
+  new BlockPlatform(632, GROUND_Y - 300),
+  new BlockPlatform(664, GROUND_Y - 300),
+  new BlockPlatform(696, GROUND_Y - 300),
+  new BlockPlatform(728, GROUND_Y - 300),
+  new BlockPlatform(760, GROUND_Y - 300),
+  new Platform(600, GROUND_Y - 150, 120, 20),
   new Platform(800, GROUND_Y - 150, 120, 20),
   new Platform(1000, GROUND_Y - 250, 100, 20),
   new Platform(1200, GROUND_Y - 180, 140, 20),
@@ -184,10 +249,6 @@ const platforms = [
   new Platform(1900, GROUND_Y - 60, 100, 20),
   new Platform(2300, GROUND_Y - 80, 120, 20),
 ];
-
-function drawSprite(img, sx, sy, sw, sh, dx, dy, scale = 1) {
-  ctx.drawImage(img, sx, sy, sw, sh, dx, dy, sw * scale, sh * scale);
-}
 
 function drawBackground() {
   ctx.fillStyle = "#87CEEB";
@@ -261,11 +322,14 @@ function drawEndOfLevel() {
 
 function animate() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
-  updateCamera(); // <-- Apply camera transform globally
+  updateCamera();
   drawBackground();
   drawGround();
   drawEndOfLevel();
-  platforms.forEach((p) => p.render());
+  platforms.forEach((p) => {
+    if (typeof p.update === "function") p.update();
+    p.render();
+  });
   player.update(platforms);
   player.render();
   requestAnimationFrame(animate);
